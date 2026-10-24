@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- iOS PWA / Web App 最佳化 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="廣島四國漫遊">
+  <title>2026 廣島・四國 隨行旅遊手札 (10/29 - 11/02)</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet.js 開源地圖核心 (100% 免 API Key) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            seto: {
+              50: '#F0F7FB',
+              100: '#E1F0F7',
+              200: '#C2E0EF',
+              500: '#2A7FA8',
+              600: '#1E6589',
+              700: '#174F6D',
+              800: '#123D54',
+              900: '#0B2736',
+            },
+            torii: {
+              500: '#E64A19',
+              600: '#D84315',
+              700: '#BF360C',
+            },
+            matcha: {
+              50: '#F4F7F4',
+              100: '#E2EBE2',
+              600: '#2E7D32',
+              700: '#1B5E20',
+            },
+            gold: {
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+            }
+          },
+          fontFamily: {
+            sans: ['"Noto Sans TC"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(18, 61, 84, 0.08)',
+            'elevated': '0 10px 26px -4px rgba(18, 61, 84, 0.16)',
+            'float': '0 14px 34px -6px rgba(23, 79, 109, 0.3)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Leaflet 地圖圖釘與自訂標籤 */
+    .leaflet-marker-icon {
+      overflow: visible !important;
+    }
+
+    .custom-marker-wrapper {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* 1. 住宿飯店：金色發光巨星 + 脈衝水波動畫 */
+    .marker-hotel {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FDE047 0%, #D97706 100%);
+      border: 3px solid #FFFFFF;
+      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      position: relative;
+      z-index: 999;
+    }
+    .hotel-pulse {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid #F59E0B;
+      animation: pulse-ring 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+      pointer-events: none;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.85); opacity: 0.95; }
+      70% { transform: scale(1.8); opacity: 0.2; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* 2. 精選美食：暖橘紅水滴標記 */
+    .marker-food {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF7043, #E64A19);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 3px 10px rgba(230, 74, 25, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* 3. 必訪景點：常盤翠綠圓標 */
+    .marker-spot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #34D399, #059669);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 3px 10px rgba(5, 150, 105, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* 4. 交通接駁：瀨戶內蔚藍圓標 */
+    .marker-transport {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38BDF8, #0284C7);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 3px 9px rgba(2, 132, 199, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    /* 圖釘名稱膠囊標籤 */
+    .marker-label {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(3px);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.2;
+      padding: 1.5px 6px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(4px);
+      color: #1E293B;
+      white-space: nowrap;
+      border: 1px solid rgba(203, 213, 225, 0.9);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      pointer-events: none;
+      z-index: 50;
+    }
+    .marker-label-hotel {
+      background: #FEF3C7;
+      color: #92400E;
+      border-color: #FCD34D;
+      font-weight: 800;
+    }
+
+    /* GPS 藍色定位脈衝點 */
+    .gps-marker {
+      width: 16px;
+      height: 16px;
+      background: #2563EB;
+      border: 2.5px solid #FFFFFF;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.8);
+      position: relative;
+    }
+    .gps-pulse-ring {
+      position: absolute;
+      inset: -7px;
+      border-radius: 50%;
+      background: rgba(37, 99, 235, 0.35);
+      animation: gps-pulse 1.8s infinite;
+    }
+    @keyframes gps-pulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+
+    /* Leaflet Popup 樣式優化 */
+    .leaflet-popup-content-wrapper {
+      padding: 0 !important;
+      border-radius: 16px !important;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.22) !important;
+      overflow: hidden;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      background: #FFFFFF !important;
+    }
+    .leaflet-popup-content {
+      margin: 0 !important;
+      line-height: 1.4 !important;
+    }
+    .leaflet-popup-tip {
+      background: #FFFFFF !important;
+    }
+    
+    #full-screen-map {
+      width: 100%;
+      height: 100%;
+      background-color: #F1F5F9;
+    }
+  </style>
+</head>
+
+<body class="bg-[#F8FAFC] text-slate-800 font-sans antialiased min-h-screen flex flex-col selection:bg-seto-100">
+
+  <!-- ================= 頂部常駐導覽列與分頁切換 (Sticky Header) ================= -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+    <div class="max-w-md mx-auto px-4 pt-2.5 pb-2">
+      <!-- 頂部標題與打卡達成率 -->
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block text-[9.5px] font-extrabold tracking-wider text-seto-700 bg-seto-100 px-2 py-0.5 rounded-full">
+              2026/10/29 - 11/02 ‧ 5天4夜
+            </span>
+            <span class="inline-block text-[9.5px] font-bold text-torii-600 bg-orange-50 px-1.5 py-0.5 rounded-md border border-orange-200">
+              去CI112 ｜ 回CI179
+            </span>
+          </div>
+          <h1 class="text-base font-black text-slate-900 mt-1 tracking-tight flex items-center gap-1.5">
+            <span>⛩️</span>
+            <span>2026 廣島・四國隨行手札</span>
+          </h1>
+        </div>
+
+        <!-- 打卡達成率徽章 -->
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl shadow-2xs">
+          <div class="text-right">
+            <div class="text-[9px] text-slate-400 font-medium leading-none">行程打卡</div>
+            <div class="text-xs font-bold text-seto-700 mt-0.5" id="header-progress-text">0 / 45 處</div>
+          </div>
+          <div class="relative w-6 h-6 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path class="text-slate-200" stroke-width="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path id="header-progress-circle" class="text-seto-600 transition-all duration-500" stroke-width="4" stroke-dasharray="0, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <span class="text-[8px] font-bold text-seto-700 absolute" id="header-progress-pct">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 原生質感分頁切換列 (Segmented Control) -->
+      <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-inner">
+        <button 
+          id="tab-btn-list"
+          onclick="switchTab('list')" 
+          class="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all duration-200 bg-white text-seto-800 shadow-sm"
+        >
+          <span>📋</span>
+          <span>行程表 (Itinerary)</span>
+        </button>
+        <button 
+          id="tab-btn-map"
+          onclick="switchTab('map')" 
+          class="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900"
+        >
+          <span>🗺️</span>
+          <span>地圖地理 (Map)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ================= 分頁 1：行程清單 (List View) ================= -->
+  <main id="view-list" class="max-w-md mx-auto px-4 pt-3 pb-24 w-full space-y-3.5 flex-1">
+
+    <!-- 天數切換與篩選控制器 (Day 1 - Day 5) -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">日程切換</span>
+        <span id="day-summary-text" class="text-[10px] text-seto-600 font-semibold">顯示全部 5 天行程</span>
+      </div>
+      
+      <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5">
+        <button onclick="filterDay('all')" data-day="all" class="day-chip px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap bg-seto-700 text-white shadow-xs">
+          全部 (5天)
+        </button>
+        <button onclick="filterDay(1)" data-day="1" class="day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          D1 廣島
+        </button>
+        <button onclick="filterDay(2)" data-day="2" class="day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          D2 宮島
+        </button>
+        <button onclick="filterDay(3)" data-day="3" class="day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          D3 倉敷/鷲羽山
+        </button>
+        <button onclick="filterDay(4)" data-day="4" class="day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          D4 小豆島
+        </button>
+        <button onclick="filterDay(5)" data-day="5" class="day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          D5 高松賦歸
+        </button>
+      </div>
+
+      <!-- 類別篩選 (飯店、美食、景點、交通、打卡) -->
+      <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pt-1">
+        <button onclick="filterCategory('all')" data-cat="all" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap bg-slate-800 text-white shadow-2xs">
+          全部類型
+        </button>
+        <button onclick="filterCategory('hotel')" data-cat="hotel" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          ⭐ 住宿飯店
+        </button>
+        <button onclick="filterCategory('food')" data-cat="food" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          🍜 美食甜點
+        </button>
+        <button onclick="filterCategory('spot')" data-cat="spot" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          ⛩️ 必訪景點
+        </button>
+        <button onclick="filterCategory('transport')" data-cat="transport" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          🚢 渡輪交通
+        </button>
+        <button onclick="filterCategory('checked')" data-cat="checked" class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200">
+          ✅ 已完成
+        </button>
+      </div>
+
+      <!-- 關鍵字搜尋框 -->
+      <div class="relative pt-0.5">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input 
+          type="text" 
+          id="list-search-input" 
+          placeholder="搜尋景點、牡蠣、渡輪、大鳥居或日文名稱..." 
+          class="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-seto-600 focus:border-transparent transition-all shadow-2xs"
+        >
+        <button id="list-clear-search" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></button>
+      </div>
+    </div>
+
+    <!-- 行程卡片容器 -->
+    <div id="itinerary-cards-container" class="space-y-3.5"></div>
+
+    <!-- 查無結果 -->
+    <div id="list-empty-state" class="hidden text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+      <div class="text-3xl mb-2">🔍</div>
+      <p class="text-sm font-bold text-slate-700">找不到符合條件的行程項目</p>
+      <p class="text-xs text-slate-400 mt-1">請嘗試修改關鍵字或重設天數/分類篩選</p>
+      <button onclick="resetFilters()" class="mt-3 px-4 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+        重置所有篩選
+      </button>
+    </div>
+
+  </main>
+
+
+  <!-- ================= 分頁 2：景點地圖 (Map View) ================= -->
+  <section id="view-map" class="hidden relative flex-1 w-full max-w-md mx-auto overflow-hidden flex flex-col" style="height: calc(100vh - 108px);">
+    
+    <!-- 地圖頂部懸浮類別過濾 Chips -->
+    <div class="absolute top-2.5 inset-x-3 z-[490] flex items-center gap-1.5 overflow-x-auto hide-scrollbar pointer-events-auto py-1">
+      <button onclick="filterMapCategory('all')" data-mcat="all" class="map-chip px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap bg-slate-900/90 text-white shadow-md backdrop-blur-md">
+        全部景點
+      </button>
+      <button onclick="filterMapCategory('hotel')" data-mcat="hotel" class="map-chip px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap bg-white/95 text-slate-800 border border-slate-200 shadow-md backdrop-blur-md">
+        ⭐ 住宿
+      </button>
+      <button onclick="filterMapCategory('food')" data-mcat="food" class="map-chip px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap bg-white/95 text-slate-800 border border-slate-200 shadow-md backdrop-blur-md">
+        🍜 美食
+      </button>
+      <button onclick="filterMapCategory('spot')" data-mcat="spot" class="map-chip px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap bg-white/95 text-slate-800 border border-slate-200 shadow-md backdrop-blur-md">
+        ⛩️ 景點
+      </button>
+      <button onclick="filterMapCategory('transport')" data-mcat="transport" class="map-chip px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap bg-white/95 text-slate-800 border border-slate-200 shadow-md backdrop-blur-md">
+        🚢 渡輪
+      </button>
+    </div>
+
+    <!-- 地圖右側懸浮快捷工具組 -->
+    <div class="absolute right-3 top-14 z-[490] flex flex-col gap-2">
+      <!-- 🔄 防呆強制刷新重繪地圖 -->
+      <button 
+        onclick="forceRefreshMap()" 
+        title="刷新重繪地圖"
+        class="w-10 h-10 rounded-xl bg-white/95 text-slate-700 shadow-elevated flex items-center justify-center border border-slate-200 active:scale-95 transition-all text-sm font-bold backdrop-blur-md"
+      >
+        🔄
+      </button>
+
+      <!-- 🎯 GPS 我的位置定位 -->
+      <button 
+        onclick="locateUserPosition()" 
+        title="定位目前位置"
+        class="w-10 h-10 rounded-xl bg-white/95 text-seto-700 shadow-elevated flex items-center justify-center border border-slate-200 active:scale-95 transition-all backdrop-blur-md"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4" stroke-width="2.5"></circle>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+        </svg>
+      </button>
+
+      <!-- 🌐 全覽視野還原 (瀬戶內海全景) -->
+      <button 
+        onclick="resetMapBounds()" 
+        title="還原全覽視野"
+        class="w-10 h-10 rounded-xl bg-white/95 text-slate-700 shadow-elevated flex items-center justify-center border border-slate-200 active:scale-95 transition-all text-[11px] font-bold backdrop-blur-md"
+      >
+        全覽
+      </button>
+    </div>
+
+    <!-- 地圖快速地域跳轉 Floating Pills -->
+    <div class="absolute left-3 top-14 z-[490] flex flex-col gap-1.5 pointer-events-auto">
+      <button onclick="flyToRegion('hiroshima')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        📍 廣島市
+      </button>
+      <button onclick="flyToRegion('miyajima')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        ⛩️ 宮島
+      </button>
+      <button onclick="flyToRegion('kurashiki')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        🏮 倉敷美觀
+      </button>
+      <button onclick="flyToRegion('washuzan')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        🌉 鷲羽山
+      </button>
+      <button onclick="flyToRegion('shodoshima')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        🫒 小豆島
+      </button>
+      <button onclick="flyToRegion('takamatsu')" class="px-2 py-1 rounded-lg bg-white/90 backdrop-blur-md text-[10px] font-bold text-slate-700 shadow-sm border border-slate-200">
+        🍜 高松市
+      </button>
+    </div>
+
+    <!-- Leaflet 互動地圖容器 -->
+    <div id="full-screen-map" class="w-full flex-1 z-0"></div>
+
+    <!-- 地圖底部橫向滑動輪播卡片 (Carousel) -->
+    <div class="absolute bottom-3 inset-x-0 z-[490] pointer-events-none">
+      <div id="map-carousel" class="flex gap-2.5 overflow-x-auto hide-scrollbar px-3.5 py-1 pointer-events-auto snap-x snap-mandatory">
+        <!-- 由 JavaScript 動態注入 -->
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ================= 浮動 TOAST 提示訊息 ================= -->
+  <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900/95 text-white px-4 py-2.5 rounded-full text-xs font-medium shadow-float backdrop-blur-md transition-all duration-300 opacity-0 pointer-events-none z-[99999] flex items-center gap-2">
+    <span id="toast-icon">📋</span>
+    <span id="toast-msg">已完成操作</span>
+  </div>
+
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    // 完整行程與景點資料庫 (對齊 2026/10/29 - 11/02 5天行程與時間表)
+    const ITINERARY_DATA = [
+      // Day 1: 2026/10/29 (四) 初訪廣島 - 歷史重現與和平祈願
+      {
+        id: 'd1-dinner-tsuki',
+        day: 1,
+        dayTitle: '初訪廣島 - 歷史重現與和平祈願',
+        date: '2026/10/29 (四)',
+        seq: 11,
+        name: '晚餐 - 月あかり (已訂位 18:00)',
+        jpName: '月あかり (鰻魚與穴子飯)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '17:46 抵達 ‧ 停留 01時00分',
+        transit: '步行約 00時12分',
+        desc: '原爆圓頂屋旁知名日本料理店，以廣島名物「穴子飯 (星鰻飯)」與炭火鰻魚飯聞名，醬汁醇厚鮮香，米飯吸滿精華。',
+        tip: '已完成預約 18:00 用餐，建議提早 10 分鐘抵達入座',
+        address: '広島県広島市中区大手町1-8-9',
+        query: '月あかり 廣島市中区大手町',
+        lat: 34.3950,
+        lng: 132.4545,
+        icon: '🍱',
+        tag: '訂位18:00・名物星鰻穴子飯'
+      },
+
+      // Day 2: 2026/10/30 (五) 漫步宮島 海上神社與夕陽
+      {
+        id: 'd2-hotel-breakfast',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 1,
+        name: '飯店早餐 (廣島麗嘉皇家酒店)',
+        jpName: 'ホテル朝食 (リーガロイヤルホテル広島)',
+        type: 'hotel',
+        categoryName: '住宿飯店',
+        time: '07:30 - 08:30',
+        transit: '09:15 準時出發前往宮島口',
+        desc: '於飯店內享用豐盛精緻早餐，補足體力準備迎接神之島滿潮大鳥居與海島漫遊行程。',
+        tip: '早餐後稍作整理，09:15 準時開車前往宮島口碼頭停車場',
+        address: '広島県広島市中区基町6-78',
+        query: 'リーガロイヤルホテル広島',
+        lat: 34.3980,
+        lng: 132.4570,
+        icon: '🍳',
+        tag: '07:30-08:30飯店早餐'
+      },
+      {
+        id: 'd2-parking',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 2,
+        name: '宮島口旅客碼頭停車場',
+        jpName: '宮島口旅客ターミナル駐車場',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '09:15 - 10:00 (飯店出發 ➔ 宮島口停車)',
+        transit: '車程約 35-45 分鐘抵達碼頭停車場',
+        desc: '自飯店出發前往宮島口，車輛停妥於宮島口旅客大樓周邊停車場 (Miyajimaguchiryokaku Terminal Parking Lot)。',
+        tip: '停車後步行至新落成的宮島口旅客大樓，準備購票登船',
+        address: '広島県廿日市市宮島口1-11-1',
+        query: '宮島口旅客ターミナル駐車場',
+        lat: 34.3126,
+        lng: 132.3035,
+        icon: '🅿️',
+        tag: '宮島口停車・自駕中繼'
+      },
+      {
+        id: 'd2-ferry-board',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 3,
+        name: '宮島渡輪碼頭 (自動售票機購票 / 搭大渡輪登島)',
+        jpName: '宮島口フェリーターミナル (乗船)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '10:00 - 10:30 (航程 10 mins)',
+        transit: '搭乘 JR 宮島渡輪或松大汽船 (10 分鐘航程)',
+        desc: '於旅客大樓自動販賣機購票（或嗶西瓜卡/ICOCA），搭乘大型景觀渡輪橫渡瀨戶內海抵達宮島棧橋。',
+        tip: '去程若搭乘 JR 渡輪，建議站右舷甲板，大鳥居大轉彎航線拍攝視角最佳',
+        address: '広島県廿日市市宮島口1-11-1',
+        query: '宮島口フェリーターミナル',
+        lat: 34.3128,
+        lng: 132.3039,
+        icon: '🚢',
+        tag: '販售機購票・大渡輪登島'
+      },
+      {
+        id: 'd2-lunch-kakiya',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 4,
+        name: 'Lunch - 牡蠣屋 (Kaki-ya)',
+        jpName: '牡蠣屋 (かきや)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '10:45 - 11:45',
+        transit: '抵達宮島後步行至表參道商店街',
+        desc: '宮島頂級牡蠣料理名店！嚴選在地最肥美的廣島生蠔與炭火烤牡蠣、牡蠣定食、牡蠣飯，鮮甜爆汁無腥味。',
+        tip: '中午人潮眾多，10:45 提早前往免久候入座；招牌烤牡蠣與牡蠣油漬不可錯過',
+        address: '広島県廿日市市宮島町539',
+        query: '牡蠣屋 宮島',
+        lat: 34.2988,
+        lng: 132.3204,
+        icon: '🦪',
+        tag: '10:45-11:45宮島頂級烤牡蠣'
+      },
+      {
+        id: 'd2-food-gebura',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 5,
+        name: 'GEBURA SISTER (廣島檸檬氣泡飲)',
+        jpName: 'GEBURA SISTER (ゲブラ シスター)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '11:50 抵達',
+        transit: '表參道步行 1 分鐘',
+        desc: '宮島超人氣特色飲品吧！廣島特產在地無農藥鮮檸檬現打氣泡飲，亦可搭配檸檬利口酒微醺。',
+        tip: '推薦招牌廣島雷夢沙瓦或無酒精檸檬氣泡飲，杯身拍照超好看',
+        address: '広島県廿日市市宮島町512-1',
+        query: 'GEBURA SISTER 宮島',
+        lat: 34.2985,
+        lng: 132.3201,
+        icon: '🍋',
+        tag: '11:50特產無農藥檸檬飲'
+      },
+      {
+        id: 'd2-food-yamadaya',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 6,
+        name: 'やまだ屋 宮島本店 (紅葉饅頭・桐葉菓)',
+        jpName: 'やまだ屋 宮島本店',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '12:00 抵達',
+        transit: '步行 1 分鐘即達',
+        desc: '昭和七年創業的宮島紅葉饅頭老字號！除了傳統紅豆餡，還有巧克力、起司、抹茶及現烤「桐葉菓」。',
+        tip: '店內有現烤點心提供試吃與茶水，桐葉菓口感格外 Q 軟糯香',
+        address: '広島県廿日市市宮島町835-1',
+        query: 'やまだ屋 宮島本店',
+        lat: 34.2991,
+        lng: 132.3211,
+        icon: '🍁',
+        tag: '12:00現烤紅葉饅頭桐葉菓'
+      },
+      {
+        id: 'd2-spot-shrine-tide',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 7,
+        name: '嚴島神社本殿與迴廊（滿潮水上鳥居）',
+        jpName: '世界遺產 嚴島神社 (本社社殿・満潮の水上鳥居)',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '12:15 - 13:45',
+        transit: '表參道步行 3 分鐘至神社入口',
+        desc: '【正逢滿潮絕美時刻】建於 16 世紀的世界文化遺產。海水漲滿整個海灣，朱紅色的國寶迴廊與大鳥居宛如漂浮於碧海之上，呈現日本三景最震撼人心的畫面。',
+        tip: '滿潮時迴廊水波倒影最為夢幻，走在木造迴廊上記得脫帽放輕腳步拍照',
+        address: '広島県廿日市市宮島町1-1',
+        query: '嚴島神社 広島県廿日市市宮島町',
+        lat: 34.2959,
+        lng: 132.3198,
+        icon: '⛩️',
+        tag: '12:15-13:45滿潮水上大鳥居'
+      },
+      {
+        id: 'd2-spot-rest-momiji',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 8,
+        name: '牡蠣祝 / 宮島茶寮 千景 / 紅葉谷公園',
+        jpName: '牡蠣祝 (Kakiiwai) / 宮島茶寮 千景 / 紅葉谷公園',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '13:45 - 15:15',
+        transit: '沿坡道漫步',
+        desc: '可登上山坡上的古民家景觀咖啡「牡蠣祝 (Kakiiwai)」俯瞰大鳥居與五重塔；或至老街「宮島茶寮 千景」享用日式抹茶和菓子；隨後沿溪流漫步至清幽雅致的「紅葉谷公園」。',
+        tip: '牡蠣祝視野開闊極度療癒；紅葉谷公園紅葉橋畔初秋林木漸染，小鹿漫步如詩如畫',
+        address: '広島県廿日市市宮島町422',
+        query: '牡蠣祝 宮島 / 紅葉谷公園',
+        lat: 34.2977,
+        lng: 132.3213,
+        icon: '🍵',
+        tag: '海景古民家咖啡・秋日紅葉谷步道'
+      },
+      {
+        id: 'd2-spot-senjokaku',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 9,
+        name: '豐國神社（千疊閣）& 五重塔',
+        jpName: '豊国神社 (千畳閣)・五重塔',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '15:15 - 16:15',
+        transit: '步行約 00時03分',
+        desc: '安土桃山時代由豐臣秀吉下令建造的巨型未完工木造神殿，鋪設多達 857 塊榻榻米。地勢較高，微風徐徐穿堂而過，可倚柱俯瞰瀨戶內海。',
+        tip: '入內需脫鞋（參拜費約100日圓），赤腳踩在光亮木地板上極其舒適涼爽',
+        address: '広島県廿日市市宮島町1-1',
+        query: '豊国神社 千畳閣 宮島',
+        lat: 34.2969,
+        lng: 132.3208,
+        icon: '🏯',
+        tag: '秀吉木造大殿・高處遠眺'
+      },
+      {
+        id: 'd2-food-miyajima-coffee',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 10,
+        name: 'MIYAJIMA COFFEE (抹茶霜淇淋)',
+        jpName: 'MIYAJIMA COFFEE (宮島珈琲)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '16:15 抵達',
+        transit: '表參道步行 2 分鐘',
+        desc: '宮島表參道旁的質感咖啡館，老町家翻修空間悠閒，招牌濃厚抹茶霜淇淋茶香濃郁。',
+        tip: '外帶濃抹茶霜淇淋漫步海岸是宮島午後最佳享受',
+        address: '広島県廿日市市宮島町464-3',
+        query: '宮島珈琲 MIYAJIMA COFFEE',
+        lat: 34.2985,
+        lng: 132.3200,
+        icon: '🍦',
+        tag: '16:15濃厚抹茶霜淇淋'
+      },
+      {
+        id: 'd2-food-itsuki-coffee',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 11,
+        name: '伊都岐咖啡 (自烘精品手沖咖啡)',
+        jpName: '伊都岐珈琲 (Itsuki Coffee)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '16:30 抵達',
+        transit: '步行 2 分鐘',
+        desc: '宮島在地代表性精品自烘咖啡名店！手沖咖啡風味純淨細膩，自家製咖啡牛奶與咖啡霜淇淋亦非常熱門。',
+        tip: '咖啡豆在宮島自烘，是帶回台灣最受歡迎的伴手禮之一',
+        address: '広島県廿日市市宮島町420',
+        query: '伊都岐珈琲 宮島',
+        lat: 34.2979,
+        lng: 132.3209,
+        icon: '☕',
+        tag: '16:30自烘手沖精品咖啡'
+      },
+      {
+        id: 'd2-spot-sunset-wait',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 12,
+        name: '海邊步道等夕陽 (御笠濱海岸)',
+        jpName: '御笠浜海岸散策・夕日待ち',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '16:45 抵達',
+        transit: '御笠濱海岸石階步道',
+        desc: '沿著御笠濱海岸步道漫步，石燈籠與松樹掩映，海風吹拂小鹿漫步身旁，靜候黃昏金色霞光。',
+        tip: '海岸旁石階與長椅是等待夕陽最舒適的位置，注意隨身紙張票券別被小鹿吃掉',
+        address: '広島県廿日市市宮島町 御笠浜',
+        query: '宮島 御笠浜',
+        lat: 34.2973,
+        lng: 132.3205,
+        icon: '🚶',
+        tag: '16:45海邊步道候夕陽'
+      },
+      {
+        id: 'd2-spot-sunset-shoot',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 13,
+        name: '海邊「滿水大鳥居 ＋ 夕陽」',
+        jpName: '大鳥居の夕日・満水夕暮れの奇跡',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '17:00 - 17:15',
+        transit: '御笠濱海岸石燈籠旁',
+        desc: '【全日攝影最精華時刻】黃昏魔幻時刻！金黃色夕陽斜射在湛藍海水與朱紅大鳥居之上，水面浮光躍金，大鳥居在霞光中化作迷人剪影。',
+        tip: '站在御笠濱海岸或常夜燈旁，以滿水海面為前景，拍攝大鳥居與落日相映的絕美大片',
+        address: '広島県廿日市市宮島町 御笠浜',
+        query: '嚴島神社 夕日 御笠浜',
+        lat: 34.2970,
+        lng: 132.3195,
+        icon: '🌅',
+        tag: '17:00滿水鳥居+金黃夕陽'
+      },
+      {
+        id: 'd2-ferry-back',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 14,
+        name: '走回碼頭，搭 17:40 / 17:55 渡輪回宮島口 (10 mins)',
+        jpName: '宮島桟橋 ➔ 宮島口 (フェリー 10分)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '17:15 - 17:30 (搭 17:40 或 17:55 船班)',
+        transit: '步行 10 分鐘至碼頭搭渡輪',
+        desc: '拍完夕陽後輕鬆走回宮島棧橋，搭乘 17:40 或 17:55 的渡輪返回宮島口（航程約 10 分鐘）。',
+        tip: '渡輪班次密集，天色漸暗注意腳下，在船舷吹風回味一整天的海島漫遊',
+        address: '広島県廿日市市宮島町 宮島桟橋',
+        query: '宮島桟橋フェリーのりば',
+        lat: 34.2995,
+        lng: 132.3228,
+        icon: '🚢',
+        tag: '搭17:40/17:55渡輪回宮島口'
+      },
+      {
+        id: 'd2-dinner-takeout',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 15,
+        name: '晚餐: 烤星鰻便當 上野商店 (9-18:30) / Hanako 廣島燒',
+        jpName: 'あなごめし うえの (宮島口名物) / お好み焼 Hanako',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '18:30 (18:30前購買)',
+        transit: '宮島口碼頭下船步行即達',
+        desc: '宮島口傳奇百年名店「あなごめし うえの」外帶剛烤出爐的星鰻便當（秘製醬汁浸潤飯粒，冷熱皆絕頂美味）；亦可挑選在地人氣 Hanako 現煎熱呼呼廣島燒。',
+        tip: 'うえの 營業至 18:30 售完為止，下船後請把握時間直奔店鋪購買便當外帶',
+        address: '広島県廿日市市宮島口1-5-11',
+        query: 'あなごめし うえの 宮島口 / お好み焼 Hanako 宮島',
+        lat: 34.3120,
+        lng: 132.3025,
+        icon: '🍱',
+        tag: '18:30上野星鰻便當/廣島燒'
+      },
+      {
+        id: 'd2-drive-back',
+        day: 2,
+        dayTitle: '漫步宮島 海上神社與夕陽',
+        date: '2026/10/30 (五)',
+        seq: 16,
+        name: 'Drive 30min回飯店 (廣島麗嘉皇家酒店)',
+        jpName: 'ドライブ約30分 ➔ リーガロイヤルホテル広島',
+        type: 'hotel',
+        categoryName: '住宿飯店',
+        time: '18:45 - 19:30',
+        transit: '車程約 30-40 分鐘',
+        desc: '自宮島口開車順暢返回市區廣島麗嘉皇家酒店，在房內悠閒品嚐買回來的星鰻便當與廣島燒，享受舒壓之夜。',
+        tip: '回到飯店後可在房內享用美味晚餐與茶飲，早點休息迎接明日精彩自駕行程',
+        address: '広島県広島市中区基町6-78',
+        query: 'リーガロイヤルホテル広島',
+        lat: 34.3980,
+        lng: 132.4570,
+        icon: '⭐',
+        tag: '開車回飯店・享受美味星鰻便當'
+      },
+
+      // Day 3: 2026/10/31 (六) 廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島
+      {
+        id: 'd3-hotel-breakfast',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 1,
+        name: '飯店早餐 (廣島麗嘉皇家酒店)',
+        jpName: 'ホテル朝食 (リーガロイヤルホテル広島)',
+        type: 'hotel',
+        categoryName: '住宿飯店',
+        time: '07:45 - 08:45',
+        transit: '09:00 退房後步行 10 分鐘至廣島城',
+        desc: '於飯店內享用豐盛早餐，退房並將大件行李裝上車，準備展開橫跨山陽與四國的自駕之旅。',
+        tip: '行李整理完畢後可先將車輛暫放或停妥，步行前往旁邊的廣島城',
+        address: '広島県広島市中区基町6-78',
+        query: 'リーガロイヤルホテル広島',
+        lat: 34.3980,
+        lng: 132.4570,
+        icon: '🍳',
+        tag: '07:45-08:45飯店早餐・退房'
+      },
+      {
+        id: 'd3-spot-castle-shrine',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 2,
+        name: '廣島城 & 廣島護國神社',
+        jpName: '広島城 (鯉城)・広島護国神社',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '09:00 - 10:00 (walk 10 mins)',
+        transit: '自飯店步行 10 分鐘即達',
+        desc: '毛利輝元於 1589 年所建的名城「鯉城」，環繞寧靜護城河與百年松林。境內的「廣島護國神社」香火鼎盛，可祈求旅途平安與御守。',
+        tip: '天守閣周邊步道平緩綠意盎然，古城石垣與護城河倒影晨間極美',
+        address: '広島県広島市中区基町21-1',
+        query: '廣島城 広島護国神社',
+        lat: 34.4039,
+        lng: 132.4593,
+        icon: '🏯',
+        tag: '日本百大名城・廣島護國神社參拜'
+      },
+      {
+        id: 'd3-drive-kurashiki',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 3,
+        name: '前往倉敷（車程 2 小時）停車點：倉敷市營中央停車場',
+        jpName: '倉敷へ移動 (車で2時間) ➔ Shiei Central Parking Lot',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '10:30 - 12:30 (車程 2 小時)',
+        transit: '沿山陽自動車道行駛約 135 公里',
+        desc: '出發驅車前往岡山縣倉敷美觀地區。導航直設「倉敷市營中央停車場 (Shiei Central Parking Lot)」，出停車場步行 3 分鐘即達美觀老街核心。',
+        tip: '【導航停車】倉敷市營中央停車場車位充足、動線佳，離白壁運河與老街最近',
+        address: '岡山県倉敷市中央2-6-1',
+        query: '倉敷市営中央駐車場',
+        lat: 34.5935,
+        lng: 133.7705,
+        icon: '🅿️',
+        tag: '車程2小時・停放市營中央停車場'
+      },
+      {
+        id: 'd3-food-miyake',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 4,
+        name: '午餐：Cafe Miyake Shouten or Kurashiki Torai Curry',
+        jpName: '三宅商店 (三宅カレー) / カレーハウス とらい',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '12:30 抵達',
+        transit: '步行 3 分鐘進入美觀老街',
+        desc: '倉敷美觀代表性町家古民家咖啡「三宅商店」，以每日新鮮野菜玄米咖哩與季節水果聖代聞名；亦可選「とらい」濃郁日式咖哩。',
+        tip: '三宅商店咖哩溫潤香濃，坐在老榻榻米上用餐氣氛絕佳',
+        address: '岡山県倉敷市本町3-11',
+        query: '三宅商店 倉敷 / カレーハウス とらい',
+        lat: 34.5966,
+        lng: 133.7735,
+        icon: '🍛',
+        tag: '12:30三宅商店咖哩・Torai咖哩'
+      },
+      {
+        id: 'd3-spot-ohara',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 5,
+        name: '舊大原宅邸 (国の重要文化財)',
+        jpName: '旧大原家住宅 (語らい座 大原本邸)',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '13:30 抵達',
+        transit: '沿倉敷川漫步 2 分鐘',
+        desc: '倉敷紡織名門大原家世代居住的宏偉宅邸，江戶風本瓦葺建築被列為國指定重要文化財，內部庭園幽靜雅致。',
+        tip: '對面即是大原美術館與倉敷川石橋，是美觀地區最經典拍照視角',
+        address: '岡山県倉敷市中央1-2-1',
+        query: '旧大原家住宅 倉敷',
+        lat: 34.5960,
+        lng: 133.7712,
+        icon: '🏛️',
+        tag: '13:30重要文化財・江戶豪商宅邸'
+      },
+      {
+        id: 'd3-spot-ivy-square',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 6,
+        name: '倉敷愛美廣場 (倉敷 IVY Square)',
+        jpName: '倉敷アイビースクエア',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '13:40 抵達',
+        transit: '步行 2 分鐘',
+        desc: '由明治時代舊倉敷紡績工廠改建的紅磚複合文化園區，外牆爬滿翠綠常春藤，融合英倫工業風與日式典雅。',
+        tip: '紅磚拱門與常春藤牆是必拍景點，中庭噴水池綠意盎然',
+        address: '岡山県倉敷市本町7-2',
+        query: '倉敷アイビースクエア',
+        lat: 34.5947,
+        lng: 133.7738,
+        icon: '🌿',
+        tag: '13:40紅磚常春藤廣場・文創園區'
+      },
+      {
+        id: 'd3-food-kurashiki-coffee',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 7,
+        name: '倉敷珈琲館 (半世紀琥珀女王咖啡)',
+        jpName: '倉敷珈琲館 (Kurashiki Coffee-kan)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '13:50 抵達',
+        transit: '倉敷川畔步行 1 分鐘',
+        desc: '創業於 1971 年的半世紀傳奇虹吸咖啡館，紅磚斑駁、光影交錯。招牌「琥珀女王」在冰鎮黑咖啡上浮著濃郁奶油與蜂蜜。',
+        tip: '招牌「琥珀の女王」口感香滑如絲絨，不容錯過的日式喫茶名品',
+        address: '岡山県倉敷市本町4-1',
+        query: '倉敷珈琲館',
+        lat: 34.5962,
+        lng: 133.7726,
+        icon: '☕',
+        tag: '13:50招牌琥珀女王・虹吸名店'
+      },
+      {
+        id: 'd3-food-miffy',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 8,
+        name: 'Miffy Kitchen (米飛藏之廚房)',
+        jpName: 'みっふぃー蔵のきっちん 倉敷店',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '14:10 抵達',
+        transit: '步行 1 分鐘',
+        desc: '以米飛兔為主題的白壁町家烘焙概念店！販售 Miffy 造型紅豆麵包、丹麥可頌與倉敷限定聯名文創雜貨。',
+        tip: 'Miffy 造型麵包每日出爐數量有限，買完可直接在店門前打卡拍照',
+        address: '岡山県倉敷市本町5-3',
+        query: 'みっふぃー蔵のきっちん 倉敷店',
+        lat: 34.5964,
+        lng: 133.7731,
+        icon: '🐰',
+        tag: '14:10米飛兔造型麵包・倉敷限定'
+      },
+      {
+        id: 'd3-food-snoopy',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 9,
+        name: 'SNOOPY Chocolat 倉敷店',
+        jpName: 'スヌーピーショコラ 倉敷店',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '14:20 抵達',
+        transit: '相鄰店鋪步行即達',
+        desc: '日式和風史努比主題巧克力專賣店，結合在地牛仔丹寧藍色系裝潢，推出岡山白桃生巧克力與精緻造型甜點。',
+        tip: '牛仔丹寧圍裙史努比玩偶與限定巧克力鐵盒，送禮自用皆宜',
+        address: '岡山県倉敷市本町5-3',
+        query: 'スヌーピーショコラ 倉敷店',
+        lat: 34.5965,
+        lng: 133.7730,
+        icon: '🍫',
+        tag: '14:20史努比丹寧藍和風生巧'
+      },
+      {
+        id: 'd3-food-pudding',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 10,
+        name: '倉敷布丁 (人氣牛仔藍布丁)',
+        jpName: '倉敷プリン (Kurashiki Pudding)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '14:30 抵達',
+        transit: '步行 1 分鐘',
+        desc: '倉敷當紅排隊甜點！以在地蒜山高原牛乳與鮮奶油每日現做，最夯的「牛仔藍布丁」上層為天然天然蝶豆花果凍，拍照超吸睛。',
+        tip: '藍色果凍微甜清爽，搭配底部濃醇綿密的布丁，層次分明',
+        address: '岡山県倉敷市本町6-17',
+        query: '倉敷プリン',
+        lat: 34.5968,
+        lng: 133.7740,
+        icon: '🍮',
+        tag: '14:30蒜山生乳・牛仔藍布丁'
+      },
+      {
+        id: 'd3-food-kibidango',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 11,
+        name: '廣榮堂吉備団子 (元祖名產)',
+        jpName: '廣榮堂 倉敷雄鶏店 (きびだんご)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '14:40 抵達',
+        transit: '步行 1 分鐘',
+        desc: '安政三年（1856年）創業的岡山桃太郎傳奇甜點！口感軟糯香甜，五味太郎設計的童趣包裝十分討喜。',
+        tip: '原味、白桃、海鹽與抹茶口味皆有，亦可試試現烤吉備糰子串',
+        address: '岡山県倉敷市本町4-18',
+        query: '廣榮堂 倉敷',
+        lat: 34.5965,
+        lng: 133.7737,
+        icon: '🍡',
+        tag: '14:40百年元祖吉備糰子'
+      },
+      {
+        id: 'd3-spot-denim-street',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 12,
+        name: 'Kurashiki Denim Street (倉敷丹寧街)',
+        jpName: '倉敷デニムストリート',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '14:50 抵達',
+        transit: '步行 2 分鐘',
+        desc: '岡山兒島為日本丹寧牛仔聖地！整條街集結上百種丹寧衣飾配件，並以奇幻的「藍色牛仔肉包」與「藍色冰淇淋」聞名。',
+        tip: '挑戰藍色牛仔肉包（味道是美味豬肉餡，外皮用天然梔子藍染色），拍照發限動必備！',
+        address: '岡山県倉敷市中央1-10-10',
+        query: '倉敷デニムストリート',
+        lat: 34.5955,
+        lng: 133.7710,
+        icon: '👖',
+        tag: '14:50丹寧聖地・藍色牛仔肉包'
+      },
+      {
+        id: 'd3-drive-washuzan',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 13,
+        name: '開車前往鷲羽山（車程 25～30 分鐘）',
+        jpName: '鷲羽山へ移動 (車で約25分)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '15:00 - 15:30',
+        transit: '南下行駛約 20 公里抵達鷲羽山停車場',
+        desc: '自倉敷美觀出發往南開往瀨戶內海國立公園核心地標「鷲羽山」。山路平緩寬敞，抵達鷲羽山第一/第二展望台停車場。',
+        tip: '停車場免費且視野良好，備好相機準備登高健行遠眺瀨戶內海全景',
+        address: '岡山県倉敷市下津井田之浦',
+        query: '鷲羽山 展望台 倉敷市',
+        lat: 34.4370,
+        lng: 133.8115,
+        icon: '🚗',
+        tag: '車程25分・前往鷲羽山展望台'
+      },
+      {
+        id: 'd3-spot-washuzan-view',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 14,
+        name: '鷲羽山展望步道 (KOTKA SETOUCHI / 鐘秀峰)',
+        jpName: '鷲羽山 (第二展望台 ➔ 第一展望台 ➔ 鐘秀峰山頂)',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '15:30 - 16:25',
+        transit: '健行漫步步道',
+        desc: '【日本第一座國立公園絕景】精選觀景動線：停車場 ➔ 步行3分 ➔ 第二展望台 ➔ 步行12分 ➔ 第一展望台 + 遊客中心 (KOTKA SETOUCHI) ➔ 步行5分 ➔ 登頂鐘秀峰！360度近距離俯瞰雙層巨構「瀨戶大橋」如長龍臥波跨越蔚藍群島。',
+        tip: 'KOTKA SETOUCHI 落地窗視野極佳，登上鐘秀峰巨石頂能拍下無死角明信片級全景',
+        address: '岡山県倉敷市下津井田之浦',
+        query: '鷲羽山 展望台 鐘秀峰',
+        lat: 34.4378,
+        lng: 133.8122,
+        icon: '🌉',
+        tag: '360度瀨戶大橋全景・KOTKA'
+      },
+      {
+        id: 'd3-drive-bridge-takamatsu',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 15,
+        name: '兒島 IC 上高速公路，跨越瀨戶大橋直達高松港',
+        jpName: '児島IC ➔ 瀬戸大橋 ➔ 高松港 (車で45分)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '16:25 - 17:10 (車程 45 分鐘)',
+        transit: '兒島 IC 上瀨戶中央道，過橋直通高松港碼頭',
+        desc: '由兒島 IC 駛入瀨戶大橋公路，親自駕車跨越壯觀的雙層瀨戶大橋！傍晚夕陽斜射在金黃橋索與海面島嶼上，景致極度震撼，過橋後直抵高松港。',
+        tip: '夕陽斜射橋面視野絕美，副駕可錄影拍攝馳騁於大海正中央的壯闊畫面',
+        address: '岡山県倉敷市児島 瀬戸中央自動車道',
+        query: '瀬戸大橋 児島IC 高松港',
+        lat: 34.3900,
+        lng: 133.8150,
+        icon: '🌉',
+        tag: '兒島IC飛馳瀨戶大橋・夕陽斜射絕景'
+      },
+      {
+        id: 'd3-takamatsu-port',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 16,
+        name: '抵達高松港碼頭，車輛直接排隊購票登船',
+        jpName: '高松港フェリー乗り場 (車輌乗船手続き)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '17:10 - 17:40',
+        transit: '開車抵達高松港小豆島渡輪專用車道',
+        desc: '抵達高松港渡輪乘船處，將車輛開入往小豆島「池田港」的車道排隊，至售票窗口出示行照或報車長購票，準備開車上渡輪。',
+        tip: '售票處會核對車長等級，購買含駕駛之車輛乘船券，副駕與乘客亦可一同隨車或走旅客通道登船',
+        address: '香川県高松市サンポート8-24',
+        query: '高松港フェリー乗り場 小豆島行き',
+        lat: 34.3533,
+        lng: 134.0514,
+        icon: '🚢',
+        tag: '高松港車輛排隊・購買小豆島船票'
+      },
+      {
+        id: 'd3-ferry-ikeda',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 17,
+        name: '搭乘小豆島渡輪前往池田港 (航程 60 分鐘)',
+        jpName: '高松港 17:40発 ➔ 小豆島 池田港 18:40着',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '17:40 - 18:40 (航程 60 分鐘)',
+        transit: '國際兩備渡輪 / 四國渡輪航程約 1 小時',
+        desc: '乘車開上大型渡輪，停好車後上到客艙沙發或甲板休息。伴隨晚霞與夜色漸濃，在微風中渡海抵達小豆島池田港。',
+        tip: '船艙內寬敞舒適並設有小賣店，可買杯熱茶或飲料，放鬆欣賞瀨戶內海黃昏暮色',
+        address: '香川県高松市〜小豆郡小豆島町池田',
+        query: '国際両備フェリー 高松港 池田港',
+        lat: 34.4100,
+        lng: 134.1500,
+        icon: '⛴️',
+        tag: '17:40高松開航・18:40抵達池田港'
+      },
+      {
+        id: 'd3-hotel-edit-checkin',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 18,
+        name: '開車 15 分鐘抵達飯店 (edit x seven 瀨戶內小豆島)',
+        jpName: 'edit x seven 瀬戸内小豆島 CHECK IN',
+        type: 'hotel',
+        categoryName: '住宿飯店',
+        time: '18:45 - 19:00 (車程 15 分鐘)',
+        transit: '自池田港開車約 15 分鐘抵達飯店',
+        desc: '抵達下榻海景設計旅宿 edit x seven，辦理入住手續。享受旅宿直面瀨戶內海的景觀設施、Thermal Spa 與木質桑拿房。',
+        tip: '飯店設有海景露台與頂級桑拿設施，稍作休整後準備出發享用在地燒肉',
+        address: '香川県小豆郡小豆島町池田',
+        query: 'edit x seven 瀬戸内小豆島',
+        lat: 34.4682,
+        lng: 134.2546,
+        icon: '⭐',
+        tag: '入住海景旅宿・放妥行李休整'
+      },
+      {
+        id: 'd3-dinner-michikusa',
+        day: 3,
+        dayTitle: '廣島城出發 ➔ 倉敷美觀 ➔ 鷲羽山 ➔ 瀨戶大橋 ➔ 小豆島',
+        date: '2026/10/31 (六)',
+        seq: 19,
+        name: '晚餐 - 燒肉 道草',
+        jpName: '焼肉 道草 (Michikusa)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '19:30 抵達 ‧ 停留 01時30分',
+        transit: '飯店出發開車約 10-15 分鐘',
+        desc: '小豆島當地極具口碑的在地燒肉老饕名店！肉質鮮嫩油花均勻，炭香四溢，搭配店家特製醬汁與現煮拉麵，是在地人與內行旅人極力推崇的隱藏版美食。',
+        tip: '招牌特選牛五花、牛舌與牛橫膈膜必點，營業至 22:00，自駕前往有停車位',
+        address: '香川県小豆郡小豆島町安田甲144-180',
+        query: '焼肉 道草 香川県小豆郡小豆島町',
+        lat: 34.4785,
+        lng: 134.3118,
+        icon: '🥩',
+        tag: '19:30小豆島人氣燒肉・在地隱藏名店'
+      },
+
+      // Day 4: 2026/11/01 (日) 漫遊小豆島 自然人文風光
+      {
+        id: 'd4-spot-kankakei',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 1,
+        name: '寒霞溪纜車 (山頂站 - 紅雲亭站)',
+        jpName: '寒霞渓ロープウェイ (日本三大美麗溪谷)',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '09:00 抵達 ‧ 停留 02時15分',
+        transit: '自飯店出發車程約 25 分鐘',
+        desc: '名列日本三大美麗峽谷與三大奇勝之一！搭乘高空纜車穿梭於險峻怪石與滿山斑斕林木之間，俯瞰瀨戶內海如畫全景。',
+        tip: '【拋瓦片祈福 (かわらけ投げ)】在山頂展望台購買小陶片，朝山谷圓圈拋擲，穿過鐵圈即可消災解厄、心想事成！',
+        address: '香川県小豆郡小豆島町神懸通乙168',
+        query: '寒霞渓ロープウェイ 山頂駅',
+        lat: 34.5126,
+        lng: 134.2995,
+        icon: '🚡',
+        tag: '三大美溪奇岩・拋瓦片消災'
+      },
+      {
+        id: 'd4-spot-morikuni',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 2,
+        name: '小豆島酒造 (MORIKUNI)',
+        jpName: '小豆島酒造 (森國酒造)',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '11:47 抵達 ‧ 停留 01時30分',
+        transit: '車程約 00時32分',
+        desc: '小豆島唯一的百年清酒造酒廠！由舊米倉改建，以新風貌展現傳統手作釀造技藝，附設文青品酒吧與在地料理食堂。',
+        tip: '「ふふふ」「うとうと」等清酒系列風味甘醇，包裝極具設計感',
+        address: '香川県小豆郡小豆島町馬木甲1010-1',
+        query: '小豆島酒造 森國酒造',
+        lat: 34.4982,
+        lng: 134.3292,
+        icon: '🍶',
+        tag: '全島唯一酒造・百年米倉改建'
+      },
+      {
+        id: 'd4-food-bakery',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 3,
+        name: '森國烘焙坊 (MORIKUNI BAKERY)',
+        jpName: '森國ベーカリー',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '13:18 抵達 ‧ 停留 00時15分',
+        transit: '酒造旁步行 00時01分',
+        desc: '小豆島酒造旗下的超人氣手作烘焙坊，採用酒米粉揉入麵糰烘焙而成，招牌紡錘麵包（コッペパン）口感 Q 彈軟嫩香氣撲鼻。',
+        tip: '酒粕奶油餡、檸檬醬與橄欖油起司麵包是當日現做招牌',
+        address: '香川県小豆郡小豆島町馬木甲1010-1',
+        query: '森國ベーカリー 小豆島',
+        lat: 34.4980,
+        lng: 134.3295,
+        icon: '🥖',
+        tag: '酒米粉手作麵包・人氣コッペパン'
+      },
+      {
+        id: 'd4-spot-olive',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 4,
+        name: '小豆島橄欖公園',
+        jpName: '道の駅 小豆島オリーブ公園',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '13:46 抵達 ‧ 停留 01時00分',
+        transit: '車程約 00時15分',
+        desc: '廣植約 2000 棵橄欖樹的面海斜坡公園，純白希臘白色風車與碧海藍天相映，為吉卜力電影《魔女宅急便》真人版取景地。',
+        tip: '館內可免費借用「魔法掃帚」，在風車前跳躍拍攝飛天經典美照；尋找「心型橄欖葉」可做成專屬書籤！',
+        address: '香川県小豆郡小豆島町西村甲1941-1',
+        query: '道の駅 小豆島オリーブ公園',
+        lat: 34.4783,
+        lng: 134.2863,
+        icon: '🫒',
+        tag: '魔女宅急便飛天掃帚・白色風車'
+      },
+      {
+        id: 'd4-food-gelato',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 5,
+        name: 'MINORI GELATO (12:00-18:00)',
+        jpName: 'ミノリジェラート (MINORI GELATO)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '14:53 抵達 ‧ 停留 00時30分',
+        transit: '車程約 00時07分',
+        desc: '小豆島頂級義式手工冰淇淋！義大利歸國主廚親自操刀，將小豆島產地直送的柑橘、奇異果、生橄欖油與醬油巧妙製成冰淇淋。',
+        tip: '首推「小豆島橄欖油生乳」與「醬油焦糖」雙球組合，驚豔味蕾',
+        address: '香川県小豆郡小豆島町草壁本町1055-2',
+        query: 'MINORI GELATO 小豆島',
+        lat: 34.4820,
+        lng: 134.3160,
+        icon: '🍨',
+        tag: '在地水果食材・頂級義式Gelato'
+      },
+      {
+        id: 'd4-hotel-relax',
+        day: 4,
+        dayTitle: '漫遊小豆島 自然人文風光',
+        date: '2026/11/01 (日)',
+        seq: 6,
+        name: 'edit x seven 瀨戶內小豆島 / 館內晚餐',
+        jpName: 'edit x seven 瀬戸内小豆島 / 夕食',
+        type: 'hotel',
+        categoryName: '住宿飯店',
+        time: '15:27 抵達 ‧ 享受設施與晚餐',
+        transit: '車程約 00時04分返回旅宿',
+        desc: '傍晚提早返回度假飯店，盡情享受海景 Spa 泳池、桑拿烤箱與無敵海景沙發區，晚上於飯店享用特色精緻晚宴。',
+        tip: '黃昏日落時分坐在陽台眺望波光粼粼的瀨戶內海，享受極致放空時光',
+        address: '香川県小豆郡小豆島町池田',
+        query: 'edit x seven 瀬戸内小豆島',
+        lat: 34.4682,
+        lng: 134.2546,
+        icon: '⭐',
+        tag: '黃昏海景放鬆・專屬精緻晚宴'
+      },
+
+      // Day 5: 2026/11/02 (一) 小豆島靈場巡禮與賦歸
+      {
+        id: 'd5-spot-nishinotaki',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 1,
+        name: '小豆島靈場第42番 龍水寺西之瀧',
+        jpName: '小豆島霊場 第42番札所 西之瀧龍水寺',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '10:30 抵達 ‧ 停留 01時00分',
+        transit: '飯店出發開車約 20 分鐘',
+        desc: '小豆島 88 處靈場中最具震撼力的一站！依傍斷崖絕壁而建的岩窟寺廟，穿過石燈籠階梯，可居高臨下俯瞰整座瀨戶內海蔚藍海灣。',
+        tip: '進入天然岩洞「護摩洞窟」內參拜，洞內湧出之龍水相傳能保佑平安',
+        address: '香川県小豆郡土庄町笠滝乙1350',
+        query: '西之瀧龍水寺 小豆島',
+        lat: 34.4912,
+        lng: 134.2185,
+        icon: '⛩️',
+        tag: '依山岩窟古剎・壯麗俯瞰海景'
+      },
+      {
+        id: 'd5-transport-slowpoke',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 2,
+        name: '土庄港搭船往高松 (呆呆獸渡輪)',
+        jpName: '土庄港 フェリーターミナル (ヤドンフェリー)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '11:53 抵達 ‧ 停留 00時30分',
+        transit: '車程約 00時23分抵達土庄港',
+        desc: '搭乘 12:20 土庄港發 - 13:20 抵達高松港之「香川縣特產呆呆獸渡輪 (ヤドンフェリー)」，粉嫩寶可夢彩繪充滿童趣。',
+        tip: '船艙內外滿滿呆呆獸圖案與拍照打卡點，航程約 60 分鐘',
+        address: '香川県小豆郡土庄町甲5165-201',
+        query: '土庄港フェリーターミナル',
+        lat: 34.4842,
+        lng: 134.1755,
+        icon: '🚢',
+        tag: '12:20開航・呆呆獸主題渡輪'
+      },
+      {
+        id: 'd5-food-moriya',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 3,
+        name: '午餐：船上用餐 or 本格手打もり家',
+        jpName: '本格手打 もり家 (讚岐手打烏龍麵)',
+        type: 'food',
+        categoryName: '精選美食',
+        time: '13:43 抵達 ‧ 停留 01時00分',
+        transit: '抵達高松港後前往 (車程約 25 分鐘)',
+        desc: '四國烏龍麵殿堂級名店！麵條皆由職人當日新鮮手打，勁道十足 Q 彈滑順，搭配巨無霸酥脆炸蔬菜天婦羅與特製高湯。',
+        tip: '招牌「かき揚げおろしうどん」炸牛蒡鮮蝦蔬菜天婦羅冷麵，淋上檸檬醬汁極度美味',
+        address: '香川県高松市香川町川内原1575-1',
+        query: '本格手打 もり家 高松市',
+        lat: 34.2547,
+        lng: 134.0531,
+        icon: '🍜',
+        tag: '讚岐手打烏龍麵名店・巨無霸天婦羅'
+      },
+      {
+        id: 'd5-spot-yashimaji',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 4,
+        name: '第八十四番札所 屋島寺',
+        jpName: '四国霊場 第84番札所 屋島寺',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '15:06 抵達 ‧ 停留 00時30分',
+        transit: '車程約 00時30分',
+        desc: '四國遍路八十八箇所第 84 番古剎，相傳由鑑真和尚與弘法大師開基。朱紅本堂保存完整，寺內供奉有著名的「蓑山大明神（狸貓神）」。',
+        tip: '境內古木參天清淨莊嚴，祈求家庭圓滿與旅途平安',
+        address: '香川県高松市屋島東町1808',
+        query: '屋島寺 高松市',
+        lat: 34.3582,
+        lng: 134.1009,
+        icon: '⛩️',
+        tag: '四國遍路第84番・古剎祈福'
+      },
+      {
+        id: 'd5-spot-yashima-view',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 5,
+        name: '屋島展望台 (獅子之靈巖)',
+        jpName: '屋島展望台 (獅子の霊巌) / やしまーる',
+        type: 'spot',
+        categoryName: '必訪景點',
+        time: '15:37 抵達 ‧ 停留 00時30分',
+        transit: '步行約 00時01分',
+        desc: '高達 293 公尺平頂熔岩台地上的絕佳展望台！可同時將高松市區高樓港口、女木島、男木島與瀨戶內海群島全景盡收眼底。',
+        tip: '亦有「瓦片投擲祈願」活動，全新波浪形「やしまーる」展覽館外型前衛優雅',
+        address: '香川県高松市屋島東町1784',
+        query: '屋島展望台 獅子の霊巌',
+        lat: 34.3588,
+        lng: 134.0988,
+        icon: '🔭',
+        tag: '高地俯瞰高松港・波浪美學建築'
+      },
+      {
+        id: 'd5-transport-airport',
+        day: 5,
+        dayTitle: '小豆島靈場巡禮與賦歸',
+        date: '2026/11/02 (一)',
+        seq: 6,
+        name: '高松機場 (TAK) - 賦歸',
+        jpName: '高松空港 (華航 CI 179 返台)',
+        type: 'transport',
+        categoryName: '交通接駁',
+        time: '16:54 抵達 ‧ 停留 01時00分',
+        transit: '車程約 00時47分抵達機場',
+        desc: '抵達高松機場辦理退稅、行李託運與出境手續。搭乘華航 CI 179（18:55 高松起飛 - 21:05 抵達台北，航程 3 小時），平安賦歸！',
+        tip: '機場二樓免稅店可採買最後的香川烏龍麵、愛媛蜜柑甜點與獺祭清酒',
+        address: '香川県高松市香南町岡1312-7',
+        query: '高松機場 高松空港',
+        lat: 34.2144,
+        lng: 134.0156,
+        icon: '✈️',
+        tag: '華航CI179・18:55起飛返台'
+      }
+    ];
+
+    // 全域變數
+    let activeTab = 'list';
+    let currentDayFilter = 'all';
+    let currentCategoryFilter = 'all';
+    let currentMapCat = 'all';
+    let searchQuery = '';
+    const STORAGE_KEY = 'japan_trip_2026_checkmarks';
+    let checkedItems = new Set();
+
+    // Leaflet 變數
+    let leafletMap = null;
+    let markersLayer = null;
+    let gpsMarker = null;
+    const markerMap = {};
+
+    // ================= 本機儲存與打卡進度 =================
+    function initStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          checkedItems = new Set(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.warn('Storage read error', e);
+      }
+      updateStats();
+    }
+
+    function saveStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([...checkedItems]));
+      } catch (e) {
+        console.warn('Storage save error', e);
+      }
+      updateStats();
+    }
+
+    function updateStats() {
+      const total = ITINERARY_DATA.length;
+      const count = checkedItems.size;
+      const pct = Math.round((count / total) * 100);
+
+      const countEl = document.getElementById('header-progress-text');
+      const pctEl = document.getElementById('header-progress-pct');
+      const circleEl = document.getElementById('header-progress-circle');
+
+      if (countEl) countEl.innerText = `${count} / ${total} 處`;
+      if (pctEl) pctEl.innerText = `${pct}%`;
+      if (circleEl) circleEl.setAttribute('stroke-dasharray', `${pct}, 100`);
+    }
+
+    function toggleCheck(id) {
+      if (checkedItems.has(id)) {
+        checkedItems.delete(id);
+        showToast('已取消此行程標記', '↩️');
+      } else {
+        checkedItems.add(id);
+        showToast('太棒了！已打卡造訪此站', '🎉');
+      }
+      saveStorage();
+      renderItineraryCards();
+    }
+
+    // ================= 分頁切換 (Lazy Init) =================
+    function switchTab(tab) {
+      if (activeTab === tab) return;
+      activeTab = tab;
+
+      const listBtn = document.getElementById('tab-btn-list');
+      const mapBtn = document.getElementById('tab-btn-map');
+      const listView = document.getElementById('view-list');
+      const mapView = document.getElementById('view-map');
+
+      if (tab === 'list') {
+        listView.classList.remove('hidden');
+        mapView.classList.add('hidden');
+
+        listBtn.className = 'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all duration-200 bg-white text-seto-800 shadow-sm';
+        mapBtn.className = 'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900';
+      } else {
+        listView.classList.add('hidden');
+        mapView.classList.remove('hidden');
+
+        mapBtn.className = 'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all duration-200 bg-white text-seto-800 shadow-sm';
+        listBtn.className = 'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900';
+
+        // 延遲初始化或重繪尺寸
+        if (!leafletMap) {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              initLeafletMap();
+            }, 60);
+          });
+        } else {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              if (leafletMap) {
+                leafletMap.invalidateSize(true);
+                fitMapToCurrentFilter();
+              }
+            }, 80);
+          });
+        }
+      }
+    }
+
+    // ================= 地圖初始化與圖資載入 (100% 免 API Key) =================
+    function initLeafletMap() {
+      const container = document.getElementById('full-screen-map');
+      if (!container) return;
+
+      // 預設中心鎖定瀨戶內海 (涵蓋廣島、愛媛、小豆島與香川)
+      leafletMap = L.map('full-screen-map', {
+        center: [34.3300, 133.2500],
+        zoom: 9,
+        zoomSnap: 0.5,
+        zoomControl: false,
+        attributionControl: false
+      });
+
+      // 載入色調柔和、繁體中文與日文字體清晰的 Esri 街景底圖 (完全免費、免金鑰、零浮水印)
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      }).addTo(leafletMap);
+
+      markersLayer = L.layerGroup().addTo(leafletMap);
+
+      renderMapMarkers();
+      renderMapCarousel();
+
+      setTimeout(() => {
+        if (leafletMap) {
+          leafletMap.invalidateSize(true);
+          resetMapBounds();
+        }
+      }, 150);
+    }
+
+    function forceRefreshMap() {
+      if (!leafletMap) {
+        initLeafletMap();
+      } else {
+        leafletMap.invalidateSize(true);
+        resetMapBounds();
+      }
+      showToast('地圖已完成刷新重繪', '🔄');
+    }
+
+    // ================= 地圖自訂圖釘生成 =================
+    function createCustomMarkerIcon(item) {
+      let iconInner = '';
+      let labelClass = 'marker-label';
+
+      if (item.type === 'hotel') {
+        // 住宿：金色巨星 + 脈衝呼吸水波
+        iconInner = `
+          <div class="marker-hotel">
+            <span>⭐</span>
+            <div class="hotel-pulse"></div>
+          </div>
+        `;
+        labelClass += ' marker-label-hotel';
+      } else if (item.type === 'food') {
+        // 美食：暖橘紅圓標
+        iconInner = `
+          <div class="marker-food">
+            <span>${item.icon}</span>
+          </div>
+        `;
+      } else if (item.type === 'transport') {
+        // 交通：蔚藍圓標
+        iconInner = `
+          <div class="marker-transport">
+            <span>${item.icon}</span>
+          </div>
+        `;
+      } else {
+        // 景點：翠綠圓標
+        iconInner = `
+          <div class="marker-spot">
+            <span>${item.icon}</span>
+          </div>
+        `;
+      }
+
+      const shortTitle = item.name.split(' ')[0].replace('廣島', '').replace('小豆島', '');
+      const iconHtml = `
+        <div class="custom-marker-wrapper">
+          ${iconInner}
+          <div class="${labelClass}">D${item.day} ${shortTitle}</div>
+        </div>
+      `;
+
+      return L.divIcon({
+        className: '',
+        html: iconHtml,
+        iconSize: [42, 42],
+        iconAnchor: [21, 21],
+        popupAnchor: [0, -22]
+      });
+    }
+
+    // 渲染所有圖釘
+    function renderMapMarkers() {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+
+      ITINERARY_DATA.forEach(item => {
+        if (currentMapCat !== 'all' && item.type !== currentMapCat) return;
+
+        const icon = createCustomMarkerIcon(item);
+        const marker = L.marker([item.lat, item.lng], { icon: icon });
+
+        // 資訊氣泡 (Popup)
+        const popupContent = `
+          <div class="p-3 max-w-[270px] text-slate-800">
+            <div class="flex items-center justify-between gap-1 mb-1.5">
+              <span class="text-[9.5px] font-bold px-2 py-0.5 rounded-full ${
+                item.type === 'hotel' ? 'bg-amber-100 text-amber-800' :
+                item.type === 'food' ? 'bg-orange-100 text-orange-800' :
+                item.type === 'transport' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
+              }">
+                Day ${item.day} ‧ ${item.categoryName}
+              </span>
+              <span class="text-[10px] font-semibold text-slate-500">${item.time.split('‧')[0]}</span>
+            </div>
+            
+            <h4 class="text-sm font-black text-slate-900 leading-tight">${item.name}</h4>
+            <div class="text-[10px] text-slate-500 font-medium mb-1">${item.jpName}</div>
+            
+            <p class="text-[11px] text-slate-600 line-clamp-2 mt-1 leading-snug">${item.desc}</p>
+            
+            <div class="text-[10px] text-slate-500 mt-2 flex items-start gap-1">
+              <span class="shrink-0">📍</span>
+              <span class="truncate">${item.address}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+              <button onclick="copySpotName('${item.name}')" class="flex items-center justify-center gap-1 py-1.5 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-700 active:bg-slate-200">
+                📋 複製店名
+              </button>
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query)}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-1 py-1.5 bg-seto-600 rounded-lg text-[11px] font-bold text-white shadow-xs active:bg-seto-700">
+                📍 Google 導航
+              </a>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { maxWidth: 290, closeButton: false });
+
+        marker.on('click', () => {
+          scrollCarouselToItem(item.id);
+        });
+
+        marker.addTo(markersLayer);
+        markerMap[item.id] = marker;
+      });
+    }
+
+    // 地圖底部輪播卡片
+    function renderMapCarousel() {
+      const carousel = document.getElementById('map-carousel');
+      if (!carousel) return;
+
+      const filtered = ITINERARY_DATA.filter(item => currentMapCat === 'all' || item.type === currentMapCat);
+
+      carousel.innerHTML = filtered.map(item => {
+        return `
+          <div 
+            id="carousel-card-${item.id}"
+            onclick="flyToMapPlace('${item.id}')"
+            class="snap-center shrink-0 w-[240px] bg-white/95 backdrop-blur-md rounded-2xl p-3 border border-slate-200 shadow-elevated active:scale-98 transition-all cursor-pointer"
+          >
+            <div class="flex items-start justify-between gap-1 mb-1">
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                item.type === 'hotel' ? 'bg-amber-100 text-amber-800' :
+                item.type === 'food' ? 'bg-orange-100 text-orange-800' :
+                item.type === 'transport' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
+              }">
+                Day ${item.day} ‧ ${item.categoryName}
+              </span>
+              <span class="text-[9px] font-medium text-slate-400 truncate max-w-[100px]">${item.tag}</span>
+            </div>
+            
+            <h4 class="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
+              <span>${item.icon}</span>
+              <span>${item.name}</span>
+            </h4>
+            
+            <p class="text-[10px] text-slate-500 line-clamp-1 mt-0.5 leading-snug">${item.address}</p>
+
+            <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 text-[10px]">
+              <span class="text-seto-600 font-bold flex items-center gap-0.5">
+                <span>🎯</span> 點擊飛往
+              </span>
+              <a 
+                href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query)}" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                onclick="event.stopPropagation()"
+                class="px-2 py-0.5 bg-seto-50 text-seto-800 border border-seto-200 rounded-md font-bold"
+              >
+                📍 導航
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function flyToMapPlace(id) {
+      const item = ITINERARY_DATA.find(p => p.id === id);
+      if (!item || !leafletMap) return;
+
+      leafletMap.flyTo([item.lat, item.lng], 16, { duration: 1.2 });
+      const marker = markerMap[id];
+      if (marker) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 850);
+      }
+      scrollCarouselToItem(id);
+    }
+
+    function scrollCarouselToItem(id) {
+      const card = document.getElementById(`carousel-card-${id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+
+    function jumpToMapPlace(id) {
+      switchTab('map');
+      setTimeout(() => {
+        flyToMapPlace(id);
+      }, 250);
+    }
+
+    function filterMapCategory(cat) {
+      currentMapCat = cat;
+      document.querySelectorAll('.map-chip').forEach(btn => {
+        const isMatch = btn.getAttribute('data-mcat') === cat;
+        if (isMatch) {
+          btn.className = 'map-chip px-2.5 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap bg-slate-900/90 text-white shadow-md backdrop-blur-md';
+        } else {
+          btn.className = 'map-chip px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap bg-white/95 text-slate-800 border border-slate-200 shadow-md backdrop-blur-md';
+        }
+      });
+      renderMapMarkers();
+      renderMapCarousel();
+      fitMapToCurrentFilter();
+    }
+
+    // 區域快捷跳轉
+    function flyToRegion(region) {
+      if (!leafletMap) return;
+      if (region === 'hiroshima') {
+        leafletMap.flyTo([34.3980, 132.4570], 14.5, { duration: 1.2 });
+        showToast('已聚焦「廣島市區」周邊', '📍');
+      } else if (region === 'miyajima') {
+        leafletMap.flyTo([34.2980, 132.3210], 15, { duration: 1.2 });
+        showToast('已聚焦「宮島・嚴島神社」', '⛩️');
+      } else if (region === 'kurashiki') {
+        leafletMap.flyTo([34.5955, 133.7718], 15.5, { duration: 1.2 });
+        showToast('已聚焦「岡山倉敷・美觀地區」', '🏮');
+      } else if (region === 'washuzan') {
+        leafletMap.flyTo([34.4370, 133.8115], 14.5, { duration: 1.2 });
+        showToast('已聚焦「鷲羽山・瀨戶大橋」', '🌉');
+      } else if (region === 'shodoshima') {
+        leafletMap.flyTo([34.4850, 134.2800], 12.5, { duration: 1.2 });
+        showToast('已聚焦「小豆島」全島', '🫒');
+      } else if (region === 'takamatsu') {
+        leafletMap.flyTo([34.3500, 134.0500], 14, { duration: 1.2 });
+        showToast('已聚焦「香川高松」周邊', '🍜');
+      }
+    }
+
+    function resetMapBounds() {
+      if (!leafletMap) return;
+      const group = L.featureGroup(ITINERARY_DATA.map(p => L.marker([p.lat, p.lng])));
+      leafletMap.fitBounds(group.getBounds(), {
+        paddingTopLeft: [20, 65],
+        paddingBottomRight: [50, 135],
+        maxZoom: 14
+      });
+      showToast('已還原瀨戶內海全景視野', '🌐');
+    }
+
+    function fitMapToCurrentFilter() {
+      if (!leafletMap) return;
+      const filtered = ITINERARY_DATA.filter(item => currentMapCat === 'all' || item.type === currentMapCat);
+      if (filtered.length === 0) return;
+      const group = L.featureGroup(filtered.map(p => L.marker([p.lat, p.lng])));
+      leafletMap.fitBounds(group.getBounds().pad(0.15));
+    }
+
+    function locateUserPosition() {
+      if (!navigator.geolocation) {
+        showToast('您的裝置未支援 GPS 定位', '⚠️');
+        return;
+      }
+      showToast('正在偵測您的 GPS 位置...', '📡');
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+
+          if (gpsMarker && leafletMap) {
+            leafletMap.removeLayer(gpsMarker);
+          }
+
+          const userIcon = L.divIcon({
+            className: '',
+            html: '<div class="gps-marker"><div class="gps-pulse-ring"></div></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          if (leafletMap) {
+            gpsMarker = L.marker([lat, lng], { icon: userIcon }).addTo(leafletMap);
+            gpsMarker.bindPopup('<div class="p-2 text-xs font-bold text-blue-700">📍 目前所在位置</div>').openPopup();
+            leafletMap.flyTo([lat, lng], 15, { duration: 1.2 });
+            showToast('已定位至目前所在位置', '🎯');
+          }
+        },
+        () => {
+          showToast('無法取得定位，請確認手機定位權限已開啟', '⚠️');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+
+    // ================= 行程清單邏輯 (List Tab) =================
+    function filterDay(day) {
+      currentDayFilter = day;
+      document.querySelectorAll('.day-chip').forEach(btn => {
+        const isMatch = btn.getAttribute('data-day') === String(day);
+        if (isMatch) {
+          btn.className = 'day-chip px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap bg-seto-700 text-white shadow-xs';
+        } else {
+          btn.className = 'day-chip px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200';
+        }
+      });
+
+      const daySummary = document.getElementById('day-summary-text');
+      if (day === 'all') {
+        daySummary.innerText = '顯示全部 5 天行程';
+      } else {
+        const titles = {
+          1: 'Day 1 廣島・歷史重現與和平祈願',
+          2: 'Day 2 宮島・滿潮水上鳥居與夕陽漫步',
+          3: 'Day 3 廣島城・倉敷美觀・鷲羽山・瀨戶大橋',
+          4: 'Day 4 小豆島・寒霞溪與自然人文風光',
+          5: 'Day 5 高松・靈場巡禮與賦歸返台'
+        };
+        daySummary.innerText = titles[day] || `Day ${day} 行程`;
+      }
+
+      renderItineraryCards();
+    }
+
+    function filterCategory(cat) {
+      currentCategoryFilter = cat;
+      document.querySelectorAll('.cat-chip').forEach(btn => {
+        const isMatch = btn.getAttribute('data-cat') === cat;
+        if (isMatch) {
+          btn.className = 'cat-chip px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap bg-slate-800 text-white shadow-2xs';
+        } else {
+          btn.className = 'cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap bg-white text-slate-700 border border-slate-200';
+        }
+      });
+      renderItineraryCards();
+    }
+
+    function resetFilters() {
+      currentDayFilter = 'all';
+      currentCategoryFilter = 'all';
+      searchQuery = '';
+      document.getElementById('list-search-input').value = '';
+      document.getElementById('list-clear-search').classList.add('hidden');
+      filterDay('all');
+      filterCategory('all');
+    }
+
+    function renderItineraryCards() {
+      const container = document.getElementById('itinerary-cards-container');
+      const emptyState = document.getElementById('list-empty-state');
+
+      const filtered = ITINERARY_DATA.filter(item => {
+        // 天數過濾
+        if (currentDayFilter !== 'all' && item.day !== Number(currentDayFilter)) return false;
+
+        // 類別過濾
+        if (currentCategoryFilter === 'checked') {
+          if (!checkedItems.has(item.id)) return false;
+        } else if (currentCategoryFilter !== 'all') {
+          if (item.type !== currentCategoryFilter) return false;
+        }
+
+        // 搜尋
+        if (searchQuery.trim() !== '') {
+          const q = searchQuery.toLowerCase();
+          const matchName = item.name.toLowerCase().includes(q);
+          const matchJp = item.jpName.toLowerCase().includes(q);
+          const matchDesc = item.desc.toLowerCase().includes(q);
+          const matchTip = item.tip.toLowerCase().includes(q);
+          const matchAddr = item.address.toLowerCase().includes(q);
+          if (!matchName && !matchJp && !matchDesc && !matchTip && !matchAddr) return false;
+        }
+
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      // 依天數分組標頭渲染
+      let lastRenderedDay = null;
+      let html = '';
+
+      filtered.forEach((item) => {
+        const isChecked = checkedItems.has(item.id);
+
+        // 若切換到不同天數且是在看「全部天數」時，輸出清爽的天數分隔條
+        if (currentDayFilter === 'all' && lastRenderedDay !== item.day) {
+          lastRenderedDay = item.day;
+          html += `
+            <div class="pt-2 pb-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-md bg-seto-700 text-white text-xs font-black tracking-wide">
+                  Day ${item.day}
+                </span>
+                <span class="text-xs font-bold text-slate-800">${item.dayTitle}</span>
+                <span class="text-[10px] text-slate-400 font-medium">(${item.date.split(' ')[0]})</span>
+              </div>
+            </div>
+          `;
+        }
+
+        let badge = '';
+        if (item.type === 'hotel') {
+          badge = '<span class="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md">⭐ 住宿飯店</span>';
+        } else if (item.type === 'food') {
+          badge = '<span class="text-[10px] font-bold text-orange-800 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded-md">🍜 精選美食</span>';
+        } else if (item.type === 'transport') {
+          badge = '<span class="text-[10px] font-bold text-sky-800 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">🚢 交通渡輪</span>';
+        } else {
+          badge = '<span class="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md">⛩️ 必訪景點</span>';
+        }
+
+        html += `
+          <article class="bg-white border ${isChecked ? 'border-emerald-200 bg-emerald-50/15' : 'border-slate-200'} rounded-2xl p-4 shadow-soft transition-all duration-300">
+            <!-- 標題列 -->
+            <div class="flex items-start justify-between gap-2.5">
+              <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                  <span class="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">#${item.seq}</span>
+                  <span class="text-[10px] font-bold text-seto-700 bg-seto-50 px-1.5 py-0.5 rounded">D${item.day}</span>
+                  ${badge}
+                </div>
+                <h3 class="text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5 ${isChecked ? 'line-through text-slate-400' : ''}">
+                  <span>${item.icon}</span>
+                  <span>${item.name}</span>
+                </h3>
+                <div class="text-[11px] text-slate-500 font-medium">${item.jpName}</div>
+              </div>
+
+              <!-- 打卡勾選鈕 -->
+              <button 
+                onclick="toggleCheck('${item.id}')" 
+                class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all ${isChecked ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}"
+                aria-label="打卡標記"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 時間與移動提示 -->
+            <div class="mt-2 flex items-center justify-between flex-wrap gap-1 bg-slate-50 border border-slate-100 rounded-xl px-2.5 py-1.5 text-xs text-slate-600">
+              <div class="flex items-center gap-1.5 font-bold text-seto-700">
+                <span>🕒</span>
+                <span>${item.time}</span>
+              </div>
+              ${item.transit ? `<div class="text-[11px] text-slate-500 font-medium">➡️ ${item.transit}</div>` : ''}
+            </div>
+
+            <!-- 說明內文 -->
+            <p class="text-xs leading-relaxed text-slate-600 mt-2 font-normal ${isChecked ? 'opacity-70' : ''}">
+              ${item.desc}
+            </p>
+
+            <!-- 貼士提醒 -->
+            <div class="mt-2.5 flex items-start gap-1.5 bg-amber-50/80 border border-amber-200/70 rounded-xl p-2 text-[11px] text-amber-900">
+              <span class="shrink-0 text-amber-600 font-bold">💡 隨行貼士：</span>
+              <span class="leading-snug">${item.tip}</span>
+            </div>
+
+            <!-- 地址 -->
+            <div class="mt-2 pt-2 border-t border-dashed border-slate-100 text-[11px] text-slate-500 flex items-start gap-1">
+              <span class="shrink-0">📍</span>
+              <span class="truncate">${item.address}</span>
+            </div>
+
+            <!-- 操作按鈕組：複製店名、地圖定位、Google 導航 -->
+            <div class="grid grid-cols-3 gap-2 mt-3 pt-1">
+              <button 
+                onclick="copySpotName('${item.name}')" 
+                class="flex items-center justify-center gap-1 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-xs active:bg-slate-100 transition-all shadow-2xs"
+              >
+                <span>📋</span> 複製名稱
+              </button>
+
+              <button 
+                onclick="jumpToMapPlace('${item.id}')" 
+                class="flex items-center justify-center gap-1 py-2 bg-seto-50 border border-seto-200 text-seto-800 rounded-xl font-bold text-xs active:bg-seto-100 transition-all shadow-2xs"
+              >
+                <span>🗺️</span> 看地圖
+              </button>
+
+              <a 
+                href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query)}" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="flex items-center justify-center gap-1 py-2 bg-seto-600 text-white rounded-xl font-bold text-xs active:bg-seto-700 transition-all shadow-2xs"
+              >
+                <span>📍</span> 導航
+              </a>
+            </div>
+          </article>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // 複製地點名稱至剪貼簿
+    function copySpotName(name) {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = name;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          showToast(`已複製「${name}」！`, '📋');
+        } else {
+          showToast('複製失敗，請手動複製', '⚠️');
+        }
+      } catch (err) {
+        showToast('複製失敗', '⚠️');
+      }
+    }
+
+    // 浮動 Toast 提示
+    let toastTimer = null;
+    function showToast(msg, icon = '📋') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = msg;
+      toastIcon.innerText = icon;
+
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2200);
+    }
+
+    // ================= 頁面啟動載入 =================
+    document.addEventListener('DOMContentLoaded', () => {
+      initStorage();
+
+      // 搜尋事件
+      const searchInput = document.getElementById('list-search-input');
+      const clearBtn = document.getElementById('list-clear-search');
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        if (searchQuery.trim().length > 0) {
+          clearBtn.classList.remove('hidden');
+        } else {
+          clearBtn.classList.add('hidden');
+        }
+        renderItineraryCards();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        searchQuery = '';
+        clearBtn.classList.add('hidden');
+        renderItineraryCards();
+      });
+
+      renderItineraryCards();
+
+      // 螢幕旋轉自動重繪地圖
+      window.addEventListener('resize', () => {
+        if (leafletMap && activeTab === 'map') {
+          leafletMap.invalidateSize(true);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
